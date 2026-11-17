@@ -1,0 +1,6 @@
+{
+  "name": "Manual Técnico · Criba Deshojadora de Aceitunas Plegable",
+  "description": "Manual interactivo de carpintería con planos de corte, optimizador de listones, lista de materiales y simulador cinemático del mecanismo de plegado compacto.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
