@@ -1,13 +1,24 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { ASSEMBLY_PHASES } from '../data/manualData';
+import { LanguageCode } from '../i18n/types';
+import { UI_COPY } from '../i18n/uiCopy';
+import { getLocalizedDataset } from '../i18n/dataTranslations';
 
-export function AssemblyGuide({ forceExpand = false }: { forceExpand?: boolean }) {
+export function AssemblyGuide({
+  lang,
+  forceExpand = false,
+}: {
+  lang: LanguageCode;
+  forceExpand?: boolean;
+}) {
   const [selectedStep, setSelectedStep] = useState<number>(1);
   const [showAllSteps, setShowAllSteps] = useState<boolean>(false);
 
+  const copy = UI_COPY[lang].assembly;
+  const phases = useMemo(() => getLocalizedDataset(lang).assemblyPhases, [lang]);
+
   const isExpanded = showAllSteps || forceExpand;
-  const activePhase = ASSEMBLY_PHASES.find((p) => p.step === selectedStep) ?? ASSEMBLY_PHASES[0];
+  const activePhase = phases.find((p) => p.step === selectedStep) ?? phases[0];
 
   return (
     <section id="montaje" className="py-16 bg-slate-50">
@@ -15,10 +26,10 @@ export function AssemblyGuide({ forceExpand = false }: { forceExpand?: boolean }
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <p className="text-xs font-mono uppercase tracking-wider text-blue-800 mb-2">
-              04 · Secuencia de construcción en taller
+              {copy.kicker}
             </p>
             <h2 className="font-display text-2xl md:text-3xl font-semibold text-slate-900 text-balance">
-              Manual de montaje paso a paso en 7 fases
+              {copy.title}
             </h2>
           </div>
 
@@ -27,7 +38,7 @@ export function AssemblyGuide({ forceExpand = false }: { forceExpand?: boolean }
             onClick={() => setShowAllSteps((v) => !v)}
             className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer whitespace-nowrap self-start md:self-auto no-print"
           >
-            {isExpanded ? 'Ver fase por fase' : 'Expandir las 7 fases'}
+            {isExpanded ? copy.stepByStepBtn : copy.expandAllBtn}
           </button>
         </div>
 
@@ -35,7 +46,7 @@ export function AssemblyGuide({ forceExpand = false }: { forceExpand?: boolean }
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Phase Selector List */}
             <div className="lg:col-span-4 border border-slate-200 rounded-xl bg-white divide-y divide-slate-100 overflow-hidden">
-              {ASSEMBLY_PHASES.map((phase) => {
+              {phases.map((phase) => {
                 const isSelected = phase.step === selectedStep;
                 return (
                   <button
@@ -74,9 +85,11 @@ export function AssemblyGuide({ forceExpand = false }: { forceExpand?: boolean }
             <div className="lg:col-span-8 border border-slate-200 rounded-xl bg-white p-6 md:p-8 space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-slate-100 text-xs font-mono text-slate-500">
                 <span>
-                  Fase {String(activePhase.step).padStart(2, '0')} de 07 · Tiempo estimado {activePhase.duration}
+                  {copy.phaseCounter(activePhase.step, phases.length, activePhase.duration)}
                 </span>
-                <span>Herramientas: {activePhase.tools}</span>
+                <span>
+                  {copy.toolsLabel} {activePhase.tools}
+                </span>
               </div>
 
               <div className="space-y-3">
@@ -98,7 +111,7 @@ export function AssemblyGuide({ forceExpand = false }: { forceExpand?: boolean }
               </ol>
 
               <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs leading-relaxed text-slate-700">
-                <strong className="font-semibold text-slate-900">Control de tolerancia: </strong>
+                <strong className="font-semibold text-slate-900">{copy.toleranceLabel} </strong>
                 {activePhase.toleranceNote}
               </div>
 
@@ -110,16 +123,16 @@ export function AssemblyGuide({ forceExpand = false }: { forceExpand?: boolean }
                   className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer whitespace-nowrap"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Fase anterior</span>
+                  <span>{copy.prevBtn}</span>
                 </button>
 
                 <button
                   type="button"
-                  disabled={selectedStep === ASSEMBLY_PHASES.length}
-                  onClick={() => setSelectedStep((s) => Math.min(ASSEMBLY_PHASES.length, s + 1))}
+                  disabled={selectedStep === phases.length}
+                  onClick={() => setSelectedStep((s) => Math.min(phases.length, s + 1))}
                   className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-800 rounded-lg hover:bg-blue-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  <span>Siguiente fase</span>
+                  <span>{copy.nextBtn}</span>
                   <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
               </div>
@@ -127,7 +140,7 @@ export function AssemblyGuide({ forceExpand = false }: { forceExpand?: boolean }
           </div>
         ) : (
           <div className="space-y-6">
-            {ASSEMBLY_PHASES.map((phase) => (
+            {phases.map((phase) => (
               <article
                 key={phase.step}
                 className="border border-slate-200 rounded-xl bg-white p-6 md:p-8 space-y-4"
@@ -152,7 +165,7 @@ export function AssemblyGuide({ forceExpand = false }: { forceExpand?: boolean }
                   ))}
                 </ol>
                 <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3">
-                  <strong className="text-slate-900">Control de tolerancia: </strong>
+                  <strong className="text-slate-900">{copy.toleranceLabel} </strong>
                   {phase.toleranceNote}
                 </p>
               </article>

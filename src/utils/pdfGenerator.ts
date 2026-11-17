@@ -1,21 +1,102 @@
 import { jsPDF } from 'jspdf';
-import {
-  ASSEMBLY_PHASES,
-  BASE_BOM_ITEMS,
-  OLIVE_PRESETS,
-  OlivePreset,
-  REFERENCE_PHOTOS,
-  STOCK_PLANS,
-  WOOD_CUT_PIECES,
-} from '../data/manualData';
+import { OlivePreset } from '../data/manualData';
+import { LanguageCode } from '../i18n/types';
+import { UI_COPY } from '../i18n/uiCopy';
+import { getLocalizedDataset } from '../i18n/dataTranslations';
 
 function cleanText(text: string): string {
   return text
     .replace(/→/g, '->')
     .replace(/±/g, '+/-')
     .replace(/—/g, '-')
-    .replace(/–/g, '-');
+    .replace(/–/g, '-')
+    .replace(/œ/g, 'oe')
+    .replace(/Œ/g, 'OE')
+    .replace(/’/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/€/g, 'EUR');
 }
+
+const PDF_PIECE_CALLOUTS: Record<LanguageCode, Record<string, string>> = {
+  es: {
+    'M-01': 'Bisel 31° | R=35 mm | Ejes Ø8,5 mm',
+    'M-02': 'Cabeza R=35 mm | Testa 90° | Ø8,5 a 4,5 cm',
+    'M-03': '46,0 x 9,0 cm | Canto inf. biselado 45°',
+    'M-04': '42,4 x 3,5 x 2,0 cm | Ranuras 2,5x3 mm',
+    'M-05': '38,4 x 3,5 x 2,0 cm | Ranuras 2,5x3 mm',
+    'M-06': '78,0 x 4,5 x 2,0 cm | Cabeza R=22 | Pie 8°',
+    'M-07': '28,0 x 4,5 x 2,0 cm | Cabeza R=22 | Base 90°',
+    'M-08': '46,0 x 4,5 x 2,0 cm | Cortes rectos 90°',
+    'M-09': '38,0 x 9,0 x 1,8 cm | Rebaje apoyo 31°',
+    'M-10': '41,4 x 9,0 x 1,8 cm | Cierre tolva 45 cm',
+    'M-11': 'Cuadradillo 22x22 mm: 19 cm (31°), 10 cm, 12 cm',
+  },
+  en: {
+    'M-01': '31° bevel | R=35 mm | Ø8.5 mm bores',
+    'M-02': 'Head R=35 mm | 90° end | Ø8.5 @ 4.5 cm',
+    'M-03': '46.0 x 9.0 cm | 45° lower inner bevel',
+    'M-04': '42.4 x 3.5 x 2.0 cm | Slots 2.5x3 mm',
+    'M-05': '38.4 x 3.5 x 2.0 cm | Slots 2.5x3 mm',
+    'M-06': '78.0 x 4.5 x 2.0 cm | Head R=22 | Foot 8°',
+    'M-07': '28.0 x 4.5 x 2.0 cm | Head R=22 | Base 90°',
+    'M-08': '46.0 x 4.5 x 2.0 cm | 90° square cuts',
+    'M-09': '38.0 x 9.0 x 1.8 cm | 31° ramp seat',
+    'M-10': '41.4 x 9.0 x 1.8 cm | 45 cm hopper width',
+    'M-11': '22x22 mm stock: 19 cm (31°), 10 cm, 12 cm',
+  },
+  pt: {
+    'M-01': 'Chanfro 31° | R=35 mm | Furos Ø8,5 mm',
+    'M-02': 'Topo R=35 mm | Corte 90° | Ø8,5 a 4,5 cm',
+    'M-03': '46,0 x 9,0 cm | Chanfro inf. 45°',
+    'M-04': '42,4 x 3,5 x 2,0 cm | Ranhuras 2,5x3 mm',
+    'M-05': '38,4 x 3,5 x 2,0 cm | Ranhuras 2,5x3 mm',
+    'M-06': '78,0 x 4,5 x 2,0 cm | Topo R=22 | Pé 8°',
+    'M-07': '28,0 x 4,5 x 2,0 cm | Topo R=22 | Base 90°',
+    'M-08': '46,0 x 4,5 x 2,0 cm | Cortes retos 90°',
+    'M-09': '38,0 x 9,0 x 1,8 cm | Rebaixo 31°',
+    'M-10': '41,4 x 9,0 x 1,8 cm | Fecho 45 cm',
+    'M-11': 'Ripa 22x22 mm: 19 cm (31°), 10 cm, 12 cm',
+  },
+  de: {
+    'M-01': '31°-Gehrung | R=35 mm | Ø8,5 mm Bohrung',
+    'M-02': 'Kopf R=35 mm | 90° | Ø8,5 bei 4,5 cm',
+    'M-03': '46,0 x 9,0 cm | 45°-Innenfase',
+    'M-04': '42,4 x 3,5 x 2,0 cm | Nuten 2,5x3 mm',
+    'M-05': '38,4 x 3,5 x 2,0 cm | Nuten 2,5x3 mm',
+    'M-06': '78,0 x 4,5 x 2,0 cm | R=22 | Fuß 8°',
+    'M-07': '28,0 x 4,5 x 2,0 cm | R=22 | Fuß 90°',
+    'M-08': '46,0 x 4,5 x 2,0 cm | 90°-Schnitte',
+    'M-09': '38,0 x 9,0 x 1,8 cm | 31°-Auflage',
+    'M-10': '41,4 x 9,0 x 1,8 cm | 45 cm Außenmaß',
+    'M-11': 'Vierkant 22x22 mm: 19 (31°), 10, 12 cm',
+  },
+  fr: {
+    'M-01': 'Biseau 31° | R=35 mm | Axes Ø8,5 mm',
+    'M-02': 'Tête R=35 mm | 90° | Ø8,5 à 4,5 cm',
+    'M-03': '46,0 x 9,0 cm | Chanfrein inf. 45°',
+    'M-04': '42,4 x 3,5 x 2,0 cm | Rainures 2,5x3 mm',
+    'M-05': '38,4 x 3,5 x 2,0 cm | Rainures 2,5x3 mm',
+    'M-06': '78,0 x 4,5 x 2,0 cm | R=22 | Pied 8°',
+    'M-07': '28,0 x 4,5 x 2,0 cm | R=22 | Base 90°',
+    'M-08': '46,0 x 4,5 x 2,0 cm | Coupes 90°',
+    'M-09': '38,0 x 9,0 x 1,8 cm | Appui 31°',
+    'M-10': '41,4 x 9,0 x 1,8 cm | Largeur 45 cm',
+    'M-11': 'Carré 22x22 mm : 19 (31°), 10, 12 cm',
+  },
+  ca: {
+    'M-01': 'Bisell 31° | R=35 mm | Eixos Ø8,5 mm',
+    'M-02': 'Cap R=35 mm | Tall 90° | Ø8,5 a 4,5 cm',
+    'M-03': '46,0 x 9,0 cm | Bisell inf. 45°',
+    'M-04': '42,4 x 3,5 x 2,0 cm | Ranures 2,5x3 mm',
+    'M-05': '38,4 x 3,5 x 2,0 cm | Ranures 2,5x3 mm',
+    'M-06': '78,0 x 4,5 x 2,0 cm | Cap R=22 | Peu 8°',
+    'M-07': '28,0 x 4,5 x 2,0 cm | Cap R=22 | Base 90°',
+    'M-08': '46,0 x 4,5 x 2,0 cm | Talls rectes 90°',
+    'M-09': '38,0 x 9,0 x 1,8 cm | Rebaix 31°',
+    'M-10': '41,4 x 9,0 x 1,8 cm | Tancament 45 cm',
+    'M-11': 'Llistó 22x22 mm: 19 cm (31°), 10 cm, 12 cm',
+  },
+};
 
 async function loadImageAsDataUrl(src: string): Promise<{ dataUrl: string; w: number; h: number } | null> {
   return new Promise((resolve) => {
@@ -62,8 +143,15 @@ function drawClosedPolygon(
   doc.lines(deltas, offsetX + pts[0][0], offsetY + pts[0][1], [1, 1], 'FD', true);
 }
 
-function drawPieceVector(doc: jsPDF, code: string, x: number, y: number, w: number, h: number) {
-  // Card box
+function drawPieceVector(
+  doc: jsPDF,
+  code: string,
+  lang: LanguageCode,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
   doc.setDrawColor(203, 213, 225);
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(x, y, w, h, 1.5, 1.5, 'FD');
@@ -72,6 +160,7 @@ function drawPieceVector(doc: jsPDF, code: string, x: number, y: number, w: numb
   const drawW = w - padX * 2;
   const cx = x + padX;
   const cy = y + h * 0.45;
+  const callout = cleanText(PDF_PIECE_CALLOUTS[lang][code] ?? code);
 
   doc.setDrawColor(120, 80, 43);
   doc.setFillColor(229, 199, 158);
@@ -92,14 +181,10 @@ function drawPieceVector(doc: jsPDF, code: string, x: number, y: number, w: numb
       cx,
       cy - rh / 2
     );
-    // Holes
     doc.setFillColor(30, 64, 175);
     doc.circle(cx + 12, cy + 2, 0.9, 'F');
     doc.circle(cx + rw - 16, cy + 2, 0.9, 'F');
     doc.circle(cx + rw - 5, cy, 1.1, 'F');
-    doc.setFontSize(6.5);
-    doc.setTextColor(30, 64, 175);
-    doc.text('Bisel 31° | R=35 mm | Ejes Ø8,5 mm', cx, y + h - 3);
   } else if (code === 'M-02') {
     const rw = drawW * 0.82;
     const rh = 10;
@@ -118,9 +203,6 @@ function drawPieceVector(doc: jsPDF, code: string, x: number, y: number, w: numb
     doc.setFillColor(30, 64, 175);
     doc.circle(cx + 5, cy, 1.1, 'F');
     doc.circle(cx + 12, cy - 1, 0.8, 'F');
-    doc.setFontSize(6.5);
-    doc.setTextColor(30, 64, 175);
-    doc.text('Cabeza R=35 mm | Testa 90° | Ø8,5 a 4,5 cm', cx, y + h - 3);
   } else if (code === 'M-03') {
     const rw = drawW * 0.65;
     const rh = 10;
@@ -138,9 +220,6 @@ function drawPieceVector(doc: jsPDF, code: string, x: number, y: number, w: numb
       cx + rw + 6,
       cy - rh / 2
     );
-    doc.setFontSize(6.5);
-    doc.setTextColor(30, 64, 175);
-    doc.text('46,0 x 9,0 cm | Canto inf. biselado 45°', cx, y + h - 3);
   } else if (code === 'M-04' || code === 'M-05') {
     const rw = code === 'M-04' ? drawW * 0.82 : drawW * 0.74;
     const rh = 7;
@@ -149,15 +228,6 @@ function drawPieceVector(doc: jsPDF, code: string, x: number, y: number, w: numb
     for (let i = 0; i < 16; i++) {
       doc.rect(cx + 4 + i * ((rw - 8) / 16), cy - rh / 2, 0.9, 2.1, 'F');
     }
-    doc.setFontSize(6.5);
-    doc.setTextColor(30, 64, 175);
-    doc.text(
-      code === 'M-04'
-        ? '42,4 x 3,5 x 2,0 cm | Ranuras 2,5x3 mm'
-        : '38,4 x 3,5 x 2,0 cm | Ranuras 2,5x3 mm',
-      cx,
-      y + h - 3
-    );
   } else if (code === 'M-06') {
     const rw = drawW * 0.84;
     const rh = 7;
@@ -175,9 +245,6 @@ function drawPieceVector(doc: jsPDF, code: string, x: number, y: number, w: numb
     );
     doc.setFillColor(30, 64, 175);
     doc.circle(cx + 3.5, cy, 1, 'F');
-    doc.setFontSize(6.5);
-    doc.setTextColor(30, 64, 175);
-    doc.text('78,0 x 4,5 x 2,0 cm | Cabeza R=22 | Pie 8°', cx, y + h - 3);
   } else if (code === 'M-07') {
     const rw = drawW * 0.45;
     const rh = 7;
@@ -195,16 +262,10 @@ function drawPieceVector(doc: jsPDF, code: string, x: number, y: number, w: numb
     );
     doc.setFillColor(30, 64, 175);
     doc.circle(cx + 15.5, cy, 1, 'F');
-    doc.setFontSize(6.5);
-    doc.setTextColor(30, 64, 175);
-    doc.text('28,0 x 4,5 x 2,0 cm | Cabeza R=22 | Base 90°', cx, y + h - 3);
   } else if (code === 'M-08') {
     const rw = drawW * 0.68;
     const rh = 7;
     doc.rect(cx + 6, cy - rh / 2, rw, rh, 'FD');
-    doc.setFontSize(6.5);
-    doc.setTextColor(30, 64, 175);
-    doc.text('46,0 x 4,5 x 2,0 cm | Cortes rectos 90°', cx, y + h - 3);
   } else if (code === 'M-09') {
     const rw = drawW * 0.65;
     const rh = 11;
@@ -220,18 +281,11 @@ function drawPieceVector(doc: jsPDF, code: string, x: number, y: number, w: numb
       cx + 6,
       cy - rh / 2
     );
-    doc.setFontSize(6.5);
-    doc.setTextColor(30, 64, 175);
-    doc.text('38,0 x 9,0 x 1,8 cm | Rebaje apoyo 31°', cx, y + h - 3);
   } else if (code === 'M-10') {
     const rw = drawW * 0.68;
     const rh = 10;
     doc.rect(cx + 6, cy - rh / 2, rw, rh, 'FD');
-    doc.setFontSize(6.5);
-    doc.setTextColor(30, 64, 175);
-    doc.text('41,4 x 9,0 x 1,8 cm | Cierre tolva 45 cm', cx, y + h - 3);
   } else {
-    // M-11
     drawClosedPolygon(
       doc,
       [
@@ -245,14 +299,25 @@ function drawPieceVector(doc: jsPDF, code: string, x: number, y: number, w: numb
     );
     doc.rect(cx + 31, cy - 5, 16, 5, 'FD');
     doc.rect(cx + 51, cy - 5, 19, 5, 'FD');
-    doc.setFontSize(6.5);
-    doc.setTextColor(30, 64, 175);
-    doc.text('Cuadradillo 22x22 mm: 19 cm (31°), 10 cm, 12 cm', cx, y + h - 3);
   }
+
+  doc.setFontSize(6.5);
+  doc.setTextColor(30, 64, 175);
+  doc.text(callout, cx, y + h - 3);
 }
 
-export async function generateManualPdf(presetId: OlivePreset['id'] = 'picual'): Promise<void> {
-  const preset = OLIVE_PRESETS.find((p) => p.id === presetId) ?? OLIVE_PRESETS[1];
+export async function generateManualPdf(
+  presetId: OlivePreset['id'] = 'picual',
+  lang: LanguageCode = 'es'
+): Promise<string> {
+  const copy = UI_COPY[lang];
+  const pdfCopy = copy.pdf;
+  const matCopy = copy.materials;
+  const pieceCopy = copy.pieces;
+  const dataset = getLocalizedDataset(lang);
+  const decimalSep = lang === 'en' ? '.' : ',';
+
+  const preset = dataset.olivePresets.find((p) => p.id === presetId) ?? dataset.olivePresets[1];
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = 210;
   const pageH = 297;
@@ -288,36 +353,27 @@ export async function generateManualPdf(presetId: OlivePreset['id'] = 'picual'):
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
   doc.setTextColor(30, 64, 175);
-  doc.text('TALLER OLIVAR · MANUAL CONSTRUCTIVO DE CARPINTERIA AGRICOLA', margin, y);
+  doc.text(cleanText(pdfCopy.headerKicker), margin, y);
   y += 8;
 
   doc.setFontSize(20);
   doc.setTextColor(15, 23, 42);
-  const titleLines = doc.splitTextToSize(
-    'Criba deshojadora de aceitunas manual plegable en madera',
-    contentW
-  );
+  const titleLines = doc.splitTextToSize(cleanText(pdfCopy.docTitle), contentW);
   doc.text(titleLines, margin, y);
   y += titleLines.length * 8 + 2;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(71, 85, 105);
-  const introLines = doc.splitTextToSize(
-    cleanText(
-      `Manual tecnico completo con planos de corte, optimizacion en 8 listones comerciales de 240 cm, detalle de forma por pieza (M-01 a M-11), mecanismo de plegado compacto (90 x 50 x 20 cm) y lista de materiales calibrada para variedad ${preset.name}.`
-    ),
-    contentW
-  );
+  const introLines = doc.splitTextToSize(cleanText(pdfCopy.intro(preset.name)), contentW);
   doc.text(introLines, margin, y);
   y += introLines.length * 4.8 + 5;
 
-  // 4-KPI Bar
   const kpis = [
-    { label: 'Altura total', value: '120 cm' },
-    { label: 'Ancho tolva', value: '45 cm' },
-    { label: 'Alto de caida', value: '30 cm' },
-    { label: 'Plegado compacto', value: '90 x 50 x 20 cm' },
+    { label: cleanText(pdfCopy.kpiLabels[0]), value: '120 cm' },
+    { label: cleanText(pdfCopy.kpiLabels[1]), value: '45 cm' },
+    { label: cleanText(pdfCopy.kpiLabels[2]), value: '30 cm' },
+    { label: cleanText(pdfCopy.kpiLabels[3]), value: '90 x 50 x 20 cm' },
   ];
   const kpiW = contentW / 4;
   doc.setDrawColor(203, 213, 225);
@@ -337,9 +393,8 @@ export async function generateManualPdf(presetId: OlivePreset['id'] = 'picual'):
   });
   y += 24;
 
-  // Load and embed the 3 reference photos side by side
   const loadedPhotos = await Promise.all(
-    REFERENCE_PHOTOS.map(async (photo) => ({
+    dataset.referencePhotos.map(async (photo) => ({
       photo,
       img: await loadImageAsDataUrl(photo.src),
     }))
@@ -370,46 +425,41 @@ export async function generateManualPdf(presetId: OlivePreset['id'] = 'picual'):
   });
   y += photoBoxH + 22;
 
-  // Folding Mechanism Summary on Page 1
-  drawSectionTitle('01 · Mecanismo de plegado compacto', 'Secuencia en 4 pasos (120 cm -> 90 x 50 x 20 cm)');
-  const foldSteps = [
-    '1. Retirar tolva superior: liberar pasadores Ø 6 mm y extraer el cajon de 45 x 38 cm hacia arriba.',
-    '2. Abatir patas delanteras (28 cm) y traseras (76 cm): aflojar palomillas M8 exteriores y plegar paralelo a M-01.',
-    '3. Liberar bloqueo de 180° en bisagra central: extraer el pasador Ø 6 mm junto al eje central.',
-    '4. Cierre en libro: pivotar el tramo superior (42 cm ancho) dentro del tramo inferior (42,4 cm luz interna).',
-  ];
+  drawSectionTitle(pdfCopy.foldKicker, pdfCopy.foldTitle);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(51, 65, 85);
-  foldSteps.forEach((line) => {
+  pdfCopy.foldSteps.forEach((line) => {
     ensureSpace(7);
-    doc.text(cleanText(line), margin, y);
-    y += 5.5;
+    const wrapped = doc.splitTextToSize(cleanText(line), contentW);
+    doc.text(wrapped, margin, y);
+    y += wrapped.length * 4.5 + 1.5;
   });
 
   // --- PAGE 2: INDIVIDUAL PIECE SHAPES & DIMENSIONS ---
   doc.addPage();
   y = 20;
-  drawSectionTitle('02 · Fichas de forma y acotación', 'Geometría detallada de las 11 piezas (M-01 a M-11)');
+  drawSectionTitle(pdfCopy.piecesKicker, pdfCopy.piecesTitle);
 
   const cardW = (contentW - 6) / 2;
   const cardH = 38;
-  for (let i = 0; i < WOOD_CUT_PIECES.length; i += 2) {
+  for (let i = 0; i < dataset.woodCutPieces.length; i += 2) {
     ensureSpace(cardH + 6);
     for (let col = 0; col < 2; col++) {
-      const piece = WOOD_CUT_PIECES[i + col];
+      const piece = dataset.woodCutPieces[i + col];
       if (!piece) continue;
       const cx = margin + col * (cardW + 6);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
       doc.setTextColor(15, 23, 42);
+      const unitLbl = piece.qty === 1 ? pieceCopy.unitSingle : pieceCopy.unitPlural;
       doc.text(
-        cleanText(`${piece.code} (${piece.qty} ${piece.qty === 1 ? 'ud' : 'uds'}) · ${piece.name}`),
+        cleanText(`${piece.code} (${piece.qty} ${unitLbl}) · ${piece.name}`),
         cx,
         y,
         { maxWidth: cardW }
       );
-      drawPieceVector(doc, piece.code, cx, y + 2.5, cardW, cardH - 5);
+      drawPieceVector(doc, piece.code, lang, cx, y + 2.5, cardW, cardH - 5);
     }
     y += cardH + 2;
   }
@@ -417,26 +467,25 @@ export async function generateManualPdf(presetId: OlivePreset['id'] = 'picual'):
   // --- PAGE 3: CUTTING TABLE & 240 CM STOCK OPTIMIZER ---
   doc.addPage();
   y = 20;
-  drawSectionTitle('03 · Tabla de despiece y aprovechamiento', 'Medidas exactas de corte y distribución en listones de 240 cm');
+  drawSectionTitle(pdfCopy.cutKicker, pdfCopy.cutTitle);
 
-  // Table header
   doc.setFillColor(241, 245, 249);
   doc.setDrawColor(203, 213, 225);
   doc.rect(margin, y, contentW, 7, 'FD');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(51, 65, 85);
-  doc.text('Cód.', margin + 2, y + 4.8);
-  doc.text('Pieza', margin + 15, y + 4.8);
-  doc.text('Uds', margin + 74, y + 4.8);
-  doc.text('Largo', margin + 84, y + 4.8);
-  doc.text('Sección', margin + 98, y + 4.8);
-  doc.text('Cortes y taladros', margin + 118, y + 4.8);
+  doc.text(cleanText(pdfCopy.cutCols[0]), margin + 2, y + 4.8);
+  doc.text(cleanText(pdfCopy.cutCols[1]), margin + 15, y + 4.8);
+  doc.text(cleanText(pdfCopy.cutCols[2]), margin + 74, y + 4.8);
+  doc.text(cleanText(pdfCopy.cutCols[3]), margin + 84, y + 4.8);
+  doc.text(cleanText(pdfCopy.cutCols[4]), margin + 98, y + 4.8);
+  doc.text(cleanText(pdfCopy.cutCols[5]), margin + 118, y + 4.8);
   y += 7;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  WOOD_CUT_PIECES.forEach((p) => {
+  dataset.woodCutPieces.forEach((p) => {
     const noteText = cleanText(`${p.angleNote}. ${p.drillNote}`);
     const wrapped = doc.splitTextToSize(noteText, contentW - 120);
     const rowH = Math.max(7, wrapped.length * 3.5 + 2.5);
@@ -452,7 +501,7 @@ export async function generateManualPdf(presetId: OlivePreset['id'] = 'picual'):
     doc.setTextColor(15, 23, 42);
     doc.text(cleanText(p.name), margin + 15, y + 4.5, { maxWidth: 57 });
     doc.text(String(p.qty), margin + 75, y + 4.5);
-    doc.text(`${p.lengthCm.toFixed(1).replace('.', ',')} cm`, margin + 84, y + 4.5);
+    doc.text(`${p.lengthCm.toFixed(1).replace('.', decimalSep)} cm`, margin + 84, y + 4.5);
     doc.text(`${p.sectionMm} mm`, margin + 98, y + 4.5);
     doc.setTextColor(71, 85, 105);
     doc.text(wrapped, margin + 118, y + 4.2);
@@ -465,15 +514,15 @@ export async function generateManualPdf(presetId: OlivePreset['id'] = 'picual'):
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(15, 23, 42);
-  doc.text('Optimización en 8 listones comerciales de 240 cm (corte sierra 3 mm)', margin, y);
+  doc.text(cleanText(pdfCopy.stockTitle), margin, y);
   y += 5;
 
-  STOCK_PLANS.forEach((plan) => {
+  dataset.stockPlans.forEach((plan) => {
     ensureSpace(8 + plan.cuts.length * 10);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(30, 64, 175);
-    doc.text(cleanText(`${plan.sectionMm} -> ${plan.quantityBars} listones`), margin, y);
+    doc.text(cleanText(pdfCopy.stockBarsLabel(plan.sectionMm, plan.quantityBars)), margin, y);
     y += 4;
 
     plan.cuts.forEach((bar) => {
@@ -499,7 +548,11 @@ export async function generateManualPdf(presetId: OlivePreset['id'] = 'picual'):
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
       doc.setTextColor(100, 116, 139);
-      doc.text(`Sobra ${bar.wasteCm.toFixed(1)} cm`, pageW - margin - 20, y + 4.3);
+      doc.text(
+        cleanText(pdfCopy.wasteShort(bar.wasteCm.toFixed(1).replace('.', decimalSep))),
+        pageW - margin - 22,
+        y + 4.3
+      );
       y += 8;
     });
     y += 2;
@@ -508,20 +561,22 @@ export async function generateManualPdf(presetId: OlivePreset['id'] = 'picual'):
   // --- PAGE 4: BOM & 7 ASSEMBLY PHASES ---
   doc.addPage();
   y = 20;
-  drawSectionTitle(
-    '04 · Lista de materiales y herrajes',
-    `Calibración activa: ${preset.name} (luz ${preset.clearGapMm.toFixed(1).replace('.', ',')} mm)`
-  );
+  const gapStr = preset.clearGapMm.toFixed(1).replace('.', decimalSep);
+  drawSectionTitle(pdfCopy.bomKicker, pdfCopy.bomTitle(preset.name, gapStr));
 
   const dynamicRodRow = {
-    name: `Varilla calibrada lisa Ø ${preset.wireDiameterMm.toFixed(1).replace('.', ',')} mm`,
-    spec: `Paso ${preset.pitchMm.toFixed(1).replace('.', ',')} mm · Luz libre ${preset.clearGapMm.toFixed(1).replace('.', ',')} mm`,
-    qtyLabel: `${preset.rodCountPerSection * 2} varillas (${preset.totalWireMeters} m)`,
+    name: matCopy.dynamicRodName(preset.wireDiameterMm.toFixed(1).replace('.', decimalSep)),
+    spec: matCopy.dynamicRodSpec(
+      preset.pitchMm.toFixed(1).replace('.', decimalSep),
+      gapStr,
+      preset.name
+    ),
+    qtyLabel: matCopy.dynamicRodQty(preset.rodCountPerSection * 2, preset.totalWireMeters),
   };
 
   const bomRows = [
     dynamicRodRow,
-    ...BASE_BOM_ITEMS.map((item) => ({
+    ...dataset.bomItems.map((item) => ({
       name: item.name,
       spec: item.spec,
       qtyLabel: item.qtyLabel,
@@ -548,13 +603,16 @@ export async function generateManualPdf(presetId: OlivePreset['id'] = 'picual'):
   });
 
   y += 6;
-  drawSectionTitle('05 · Montaje paso a paso', 'Secuencia constructiva en 7 fases de taller');
+  drawSectionTitle(pdfCopy.assemblyKicker, pdfCopy.assemblyTitle);
 
-  ASSEMBLY_PHASES.forEach((phase) => {
+  dataset.assemblyPhases.forEach((phase) => {
     const instrLines = phase.instructions.flatMap((line, idx) =>
       doc.splitTextToSize(cleanText(`${phase.step}.${idx + 1} ${line}`), contentW - 4)
     );
-    const tolLines = doc.splitTextToSize(cleanText(`Tolerancia: ${phase.toleranceNote}`), contentW - 4);
+    const tolLines = doc.splitTextToSize(
+      cleanText(`${pdfCopy.tolerancePrefix} ${phase.toleranceNote}`),
+      contentW - 4
+    );
     const blockH = 11 + instrLines.length * 3.8 + tolLines.length * 3.8 + 4;
     ensureSpace(blockH);
 
@@ -580,7 +638,6 @@ export async function generateManualPdf(presetId: OlivePreset['id'] = 'picual'):
     y += tolLines.length * 3.8 + 4;
   });
 
-  // Running headers and footers across all pages
   const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
@@ -589,18 +646,19 @@ export async function generateManualPdf(presetId: OlivePreset['id'] = 'picual'):
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(100, 116, 139);
-    doc.text('Taller Olivar · Manual de Criba Deshojadora Plegable (90x50x20 cm)', margin, pageH - 7.5);
-    doc.text(`Página ${p} de ${totalPages}`, pageW - margin, pageH - 7.5, { align: 'right' });
+    doc.text(cleanText(pdfCopy.footerLeft), margin, pageH - 7.5);
+    doc.text(cleanText(pdfCopy.pageOf(p, totalPages)), pageW - margin, pageH - 7.5, { align: 'right' });
   }
 
-  // Trigger reliable Blob download inside iframe
+  const filename = `manual-criba-deshojadora-${lang}-${preset.id}.pdf`;
   const blob = doc.output('blob');
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `manual-criba-deshojadora-${preset.id}.pdf`;
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 1500);
+  return filename;
 }

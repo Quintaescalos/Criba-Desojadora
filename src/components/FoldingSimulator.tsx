@@ -1,48 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pause, Play, RotateCcw } from 'lucide-react';
-
-interface StagePreset {
-  id: number;
-  label: string;
-  target: number;
-  title: string;
-  description: string;
-}
-
-const STAGES: StagePreset[] = [
-  {
-    id: 0,
-    label: '1. Trabajo',
-    target: 0,
-    title: 'Posición de trabajo desplegada (31°)',
-    description:
-      'Las patas traseras y delanteras están bloqueadas con pasadores Ø 6 mm. La rampa de 162 cm trabaja a 31° con tolva superior horizontal a 120 cm y salida de aceituna a 30 cm del suelo.',
-  },
-  {
-    id: 1,
-    label: '2. Tolva',
-    target: 25,
-    title: 'Desmontaje rápido de la tolva',
-    description:
-      'Se liberan los dos pasadores de la tolva superior y se extrae hacia arriba. Su anchura de 45 cm y 9 cm de altura permiten alojarla plana junto al bastidor plegado.',
-  },
-  {
-    id: 2,
-    label: '3. Patas',
-    target: 58,
-    title: 'Abatimiento de patas sobre largueros',
-    description:
-      'Se aflojan las palomillas M8 exteriores. Las patas delanteras (28 cm) y traseras (76 cm) giran sobre arandelas de nylon hasta quedar paralelas al bastidor inferior de 88 cm.',
-  },
-  {
-    id: 3,
-    label: '4. Cierre',
-    target: 100,
-    title: 'Cierre en libro compacto (90 × 50 × 20 cm)',
-    description:
-      'El tramo superior (42 cm de ancho) pivota 180° por la bisagra central M8 y encaja dentro del tramo inferior (42,4 cm interiores), protegiendo la estructura en un bloque de 90×50×20 cm.',
-  },
-];
+import { LanguageCode } from '../i18n/types';
+import { UI_COPY } from '../i18n/uiCopy';
+import { getLocalizedDataset } from '../i18n/dataTranslations';
 
 interface Particle {
   id: number;
@@ -68,7 +28,7 @@ function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
-export function FoldingSimulator() {
+export function FoldingSimulator({ lang }: { lang: LanguageCode }) {
   const [progress, setProgress] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [showFlow, setShowFlow] = useState<boolean>(true);
@@ -76,6 +36,9 @@ export function FoldingSimulator() {
   const [flowTick, setFlowTick] = useState<number>(0);
 
   const playDirRef = useRef<1 | -1>(1);
+
+  const copy = UI_COPY[lang].simulator;
+  const stages = useMemo(() => getLocalizedDataset(lang).foldingStages, [lang]);
 
   useEffect(() => {
     if (!isPlaying) return;
@@ -126,26 +89,23 @@ export function FoldingSimulator() {
   }, [showFlow, progress]);
 
   const activeStage = useMemo(() => {
-    if (progress < 15) return STAGES[0];
-    if (progress < 42) return STAGES[1];
-    if (progress < 82) return STAGES[2];
-    return STAGES[3];
-  }, [progress]);
+    if (progress < 15) return stages[0];
+    if (progress < 42) return stages[1];
+    if (progress < 82) return stages[2];
+    return stages[3];
+  }, [progress, stages]);
 
   // Kinematic interpolation parameters
   const tHopper = clamp(progress / 25, 0, 1);
   const tLegs = clamp((progress - 25) / 33, 0, 1);
   const tFold = clamp((progress - 58) / 42, 0, 1);
 
-  // Scale: 2.8 px per cm; Floor datum at y = 408
   const SCALE = 2.8;
   const FLOOR_Y = 408;
 
-  // Lower frame inclination: 31 deg unfolded -> 0 deg when legs fold
   const lowerAngleDeg = lerp(31, 0, tLegs);
   const lowerAngleRad = (lowerAngleDeg * Math.PI) / 180;
 
-  // Front lip pivot on lower frame stays above floor, settling down onto floor block at tLegs=1
   const frontX = lerp(165, 285, tLegs);
   const frontY = lerp(FLOOR_Y - 30 * SCALE, FLOOR_Y - 12 * SCALE, tLegs);
 
@@ -154,15 +114,13 @@ export function FoldingSimulator() {
   const nx = -uy;
   const ny = ux;
 
-  // Lower frame M-01: 88 cm long, 9 cm tall
   const L1 = 88 * SCALE;
   const H_RAIL = 9 * SCALE;
-  const HINGE_OFFSET = 83 * SCALE; // hinge pivot near top of M-01
+  const HINGE_OFFSET = 83 * SCALE;
 
   const hingeX = frontX + HINGE_OFFSET * ux;
   const hingeY = frontY + HINGE_OFFSET * uy;
 
-  // Upper frame M-02: 82 cm long, pivots 180 deg counter-clockwise (up & forward over M-01)
   const L2 = 82 * SCALE;
   const foldAngleRad = lerp(0, Math.PI, tFold);
   const upperAngleRad = lowerAngleRad + foldAngleRad;
@@ -171,32 +129,26 @@ export function FoldingSimulator() {
   const n2x = -u2y;
   const n2y = u2x;
 
-  // Offset upper frame slightly upward along normal at full fold so rails stack cleanly (18 cm + 2 cm = 20 cm)
   const stackLift = lerp(0, H_RAIL * 0.92, tFold);
   const u2BaseX = hingeX - 5 * SCALE * u2x + stackLift * nx;
   const u2BaseY = hingeY - 5 * SCALE * u2y + stackLift * ny;
 
-  // Rear leg pivot on M-01 (at 76 cm from front)
   const rearPivotDist = 76 * SCALE;
   const rearPivotX = frontX + rearPivotDist * ux;
   const rearPivotY = frontY + rearPivotDist * uy;
   const rearLen = 76 * SCALE;
-  // Unfolded: points downward-slightly-back (~76 deg from +x? Wait: +y is down, so angle ~78 deg). Folded: aligns back along -M-01 (angle 180 deg)
   const rearLegAngleRad = lerp((75 * Math.PI) / 180, Math.PI, tLegs);
   const rearTipX = rearPivotX + rearLen * Math.cos(rearLegAngleRad);
   const rearTipY = rearPivotY + rearLen * Math.sin(rearLegAngleRad);
 
-  // Front leg pivot on M-01 (at 10 cm from front)
   const frontPivotDist = 10 * SCALE;
   const frontPivotX = frontX + frontPivotDist * ux;
   const frontPivotY = frontY + frontPivotDist * uy;
   const frontLen = 28 * SCALE;
-  // Unfolded: straight down (90 deg). Folded: swings backward along +M-01 (0 deg)
   const frontLegAngleRad = lerp(Math.PI / 2, 0, tLegs);
   const frontTipX = frontPivotX + frontLen * Math.cos(frontLegAngleRad);
   const frontTipY = frontPivotY + frontLen * Math.sin(frontLegAngleRad);
 
-  // Hopper position (sits horizontal near top of M-02 when tHopper=0)
   const m2TopX = u2BaseX + L2 * u2x + H_RAIL * n2x;
   const m2TopY = u2BaseY + L2 * u2y + H_RAIL * n2y;
   const hopperWidth = 38 * SCALE;
@@ -205,12 +157,12 @@ export function FoldingSimulator() {
   const hopperY = m2TopY - hopperHeight - tHopper * 56;
   const hopperOpacity = 1 - tHopper * 0.82;
 
-  // Real-time computed telemetry
   const currentLengthCm = Math.round(lerp(162, 90, tFold));
   const currentHeightCm = Math.round(
     lerp(120, lerp(110, lerp(28, 20, tFold), tLegs), clamp(progress / 25, 0, 1))
   );
-  const currentRampAngle = (lowerAngleDeg).toFixed(1).replace('.', ',');
+  const decimalSep = lang === 'en' ? '.' : ',';
+  const currentRampAngle = lowerAngleDeg.toFixed(1).replace('.', decimalSep);
 
   const handlePlayToggle = () => {
     if (isPlaying) {
@@ -237,15 +189,13 @@ export function FoldingSimulator() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div>
             <p className="text-xs font-mono uppercase tracking-wider text-blue-800 mb-2">
-              01 · Simulador cinemático y principio de separación
+              {copy.kicker}
             </p>
             <h2 className="font-display text-2xl md:text-3xl font-semibold text-slate-900 text-balance">
-              Mecanismo de plegado compacto y cribado por gravedad
+              {copy.title}
             </h2>
           </div>
-          <p className="text-sm text-slate-600 max-w-md">
-            Desliza el control para inspeccionar cómo una rampa de 162 cm y 120 cm de altura se pliega sin herramientas hasta 90 × 50 × 20 cm.
-          </p>
+          <p className="text-sm text-slate-600 max-w-md">{copy.subtitle}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
@@ -254,19 +204,19 @@ export function FoldingSimulator() {
             <div className="px-5 py-3 border-b border-slate-200 bg-white/90 flex flex-wrap items-center justify-between gap-4 text-xs">
               <div className="flex items-center gap-4 font-mono text-slate-700">
                 <span>
-                  Largo: <strong className="text-slate-900">{currentLengthCm} cm</strong>
+                  {copy.lengthLabel}: <strong className="text-slate-900">{currentLengthCm} cm</strong>
                 </span>
                 <span aria-hidden="true" className="text-slate-300">·</span>
                 <span>
-                  Altura: <strong className="text-slate-900">{currentHeightCm} cm</strong>
+                  {copy.heightLabel}: <strong className="text-slate-900">{currentHeightCm} cm</strong>
                 </span>
                 <span aria-hidden="true" className="text-slate-300">·</span>
                 <span>
-                  Ángulo: <strong className="text-slate-900">{currentRampAngle}°</strong>
+                  {copy.angleLabel}: <strong className="text-slate-900">{currentRampAngle}°</strong>
                 </span>
               </div>
               <span className="font-mono text-blue-800 font-medium">
-                {progress >= 98 ? 'Formato plegado 90×50×20 cm' : progress <= 2 ? 'En servicio · Cribado activo' : 'Transición de plegado'}
+                {progress >= 98 ? copy.stateFolded : progress <= 2 ? copy.stateWorking : copy.stateTransition}
               </span>
             </div>
 
@@ -275,7 +225,7 @@ export function FoldingSimulator() {
                 viewBox="0 0 820 450"
                 className="w-full h-auto max-h-[440px]"
                 role="img"
-                aria-label="Diagrama cinemático interactivo del plegado de la criba deshojadora de aceitunas"
+                aria-label={copy.title}
               >
                 <defs>
                   <pattern id="meshPattern" width="8" height="8" patternUnits="userSpaceOnUse">
@@ -286,19 +236,17 @@ export function FoldingSimulator() {
                 {/* Floor datum line */}
                 <line x1="60" y1={FLOOR_Y} x2="760" y2={FLOOR_Y} stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="6 4" />
                 <text x="72" y={FLOOR_Y + 18} className="fill-slate-500 text-[11px] font-mono">
-                  Nivel de suelo (0 cm)
+                  {copy.svgFloor}
                 </text>
 
                 {/* Collection crate & leaf tarp in working position */}
                 {progress < 18 && (
                   <g opacity={1 - progress / 18}>
-                    {/* Leaf drop tarp under ramp */}
                     <rect x="210" y={FLOOR_Y - 5} width="220" height="5" rx="2" fill="#cbd5e1" />
                     <text x="320" y={FLOOR_Y + 18} textAnchor="middle" className="fill-slate-500 text-[10px] font-mono">
-                      Zona de caída de hojas
+                      {copy.svgLeafZone}
                     </text>
 
-                    {/* Olive crate under 30 cm exit */}
                     <rect
                       x="76"
                       y={FLOOR_Y - 22 * SCALE}
@@ -310,7 +258,7 @@ export function FoldingSimulator() {
                       rx="2"
                     />
                     <text x="118" y={FLOOR_Y - 24} textAnchor="middle" className="fill-slate-700 text-[10px] font-mono">
-                      Caja aceitunas
+                      {copy.svgCrate}
                     </text>
                   </g>
                 )}
@@ -372,7 +320,6 @@ export function FoldingSimulator() {
                     stroke="#78502b"
                     strokeWidth="1.5"
                   />
-                  {/* Longitudinal rod bed line inside M-01 */}
                   <line
                     x1={frontX + 2 * SCALE * ux + 2.2 * SCALE * nx}
                     y1={frontY + 2 * SCALE * uy + 2.2 * SCALE * ny}
@@ -389,7 +336,7 @@ export function FoldingSimulator() {
                     textAnchor="middle"
                     className="fill-slate-900 text-[10px] font-mono font-semibold"
                   >
-                    Tramo inferior M-01 (88 cm)
+                    {copy.svgLowerFrame}
                   </text>
                 </g>
 
@@ -422,13 +369,12 @@ export function FoldingSimulator() {
                     textAnchor="middle"
                     className="fill-slate-900 text-[10px] font-mono font-semibold"
                   >
-                    Tramo superior M-02 (82 cm)
+                    {copy.svgUpperFrame}
                   </text>
                 </g>
 
-                {/* Removable Hopper (Tolva) */}
+                {/* Removable Hopper */}
                 <g opacity={hopperOpacity}>
-                  {/* Front vertical strut M-11 */}
                   <rect
                     x={hopperX + 4}
                     y={hopperY + hopperHeight}
@@ -463,18 +409,17 @@ export function FoldingSimulator() {
                     textAnchor="middle"
                     className="fill-slate-900 text-[10px] font-mono font-semibold"
                   >
-                    Tolva 45×38 cm
+                    {copy.svgHopper}
                   </text>
                 </g>
 
-                {/* Live Olive & Leaf Separation Simulation (when unfolded) */}
+                {/* Live Olive & Leaf Separation Simulation */}
                 {showFlow && progress <= 4 && (
                   <g>
                     {INITIAL_PARTICLES.map((p) => {
                       const t = (p.phase + flowTick * p.speed) % 1;
 
                       if (p.kind === 'twig') {
-                        // Twigs enter top of hopper and stay trapped on the 25mm mesh
                         const dropT = clamp(t * 3, 0, 1);
                         const px = hopperX + 26 + ((p.id * 19) % 55);
                         const py = lerp(hopperY - 22, hopperY + hopperHeight - 5, dropT);
@@ -494,7 +439,6 @@ export function FoldingSimulator() {
                       }
 
                       if (p.kind === 'leaf') {
-                        // Leaves drop through hopper onto upper ramp, slide partway, then fall through 9.5mm gaps
                         if (t < 0.24) {
                           const lt = t / 0.24;
                           const px = hopperX + 25 + p.laneOffset * 2;
@@ -546,7 +490,6 @@ export function FoldingSimulator() {
                         );
                       }
 
-                      // Olive: falls through hopper onto ramp, rolls cleanly all the way down to crate at 30cm
                       if (t < 0.2) {
                         const lt = t / 0.2;
                         const px = hopperX + 35 + p.laneOffset * 2;
@@ -571,7 +514,6 @@ export function FoldingSimulator() {
                 {/* Pivot Axes & Dimensions Overlay */}
                 {showAxes && (
                   <g>
-                    {/* Central hinge pivot */}
                     <circle cx={hingeX + 4.5 * SCALE * nx} cy={hingeY + 4.5 * SCALE * ny} r="5.5" fill="#1e40af" stroke="#ffffff" strokeWidth="1.5" />
                     <text
                       x={hingeX + 4.5 * SCALE * nx}
@@ -579,16 +521,12 @@ export function FoldingSimulator() {
                       textAnchor="middle"
                       className="fill-blue-900 text-[10px] font-mono font-semibold"
                     >
-                      Bisagra M8
+                      {copy.svgHinge}
                     </text>
 
-                    {/* Rear leg pivot */}
                     <circle cx={rearPivotX + 4 * SCALE * nx} cy={rearPivotY + 4 * SCALE * ny} r="4.5" fill="#1e40af" stroke="#ffffff" strokeWidth="1.5" />
-
-                    {/* Front leg pivot */}
                     <circle cx={frontPivotX + 4 * SCALE * nx} cy={frontPivotY + 4 * SCALE * ny} r="4.5" fill="#1e40af" stroke="#ffffff" strokeWidth="1.5" />
 
-                    {/* Unfolded Height 120 cm dimension line */}
                     {progress < 20 && (
                       <g opacity={1 - progress / 20}>
                         <line x1="650" y1={FLOOR_Y} x2="650" y2={hopperY} stroke="#1e40af" strokeWidth="1.2" />
@@ -600,7 +538,6 @@ export function FoldingSimulator() {
                       </g>
                     )}
 
-                    {/* Folded envelope callout at >= 95% */}
                     {progress >= 95 && (
                       <g>
                         <rect
@@ -620,7 +557,7 @@ export function FoldingSimulator() {
                           textAnchor="middle"
                           className="fill-blue-900 text-[11px] font-mono font-semibold"
                         >
-                          Volumen compacto: 90 cm × 50 cm × 20 cm
+                          {copy.svgFoldedVolume}
                         </text>
                       </g>
                     )}
@@ -635,7 +572,7 @@ export function FoldingSimulator() {
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between text-xs font-medium text-slate-700 mb-2">
-                  <label htmlFor="fold-slider">Progreso de plegado</label>
+                  <label htmlFor="fold-slider">{copy.sliderLabel}</label>
                   <span className="font-mono font-semibold text-blue-800">
                     {Math.round(progress)} %
                   </span>
@@ -654,9 +591,9 @@ export function FoldingSimulator() {
                   className="w-full accent-blue-800 cursor-pointer"
                 />
                 <div className="flex justify-between text-[11px] font-mono text-slate-400 mt-1">
-                  <span>0% Desplegada</span>
-                  <span>50% Patas</span>
-                  <span>100% Plegada</span>
+                  <span>{copy.sliderMarks[0]}</span>
+                  <span>{copy.sliderMarks[1]}</span>
+                  <span>{copy.sliderMarks[2]}</span>
                 </div>
               </div>
 
@@ -669,12 +606,12 @@ export function FoldingSimulator() {
                   {isPlaying ? (
                     <>
                       <Pause className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span>Pausar secuencia</span>
+                      <span>{copy.pauseBtn}</span>
                     </>
                   ) : (
                     <>
                       <Play className="w-3.5 h-3.5" aria-hidden="true" />
-                      <span>{progress >= 99 ? 'Desplegar' : 'Animar plegado'}</span>
+                      <span>{progress >= 99 ? copy.unfoldBtn : copy.foldBtn}</span>
                     </>
                   )}
                 </button>
@@ -682,17 +619,17 @@ export function FoldingSimulator() {
                   type="button"
                   onClick={handleReset}
                   className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer whitespace-nowrap"
-                  aria-label="Restablecer a posición de trabajo"
+                  aria-label={copy.resetBtn}
                 >
                   <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Reiniciar</span>
+                  <span>{copy.resetBtn}</span>
                 </button>
               </div>
 
               <div>
-                <p className="text-xs font-medium text-slate-500 mb-2">Etapas del mecanismo</p>
+                <p className="text-xs font-medium text-slate-500 mb-2">{copy.stagesTitle}</p>
                 <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-lg">
-                  {STAGES.map((st) => {
+                  {stages.map((st) => {
                     const isActive = activeStage.id === st.id;
                     return (
                       <button
@@ -723,7 +660,7 @@ export function FoldingSimulator() {
 
             <div className="pt-4 border-t border-slate-200 space-y-2.5">
               <label className="flex items-center justify-between text-xs text-slate-700 cursor-pointer">
-                <span>Simular separación aceituna / hoja</span>
+                <span>{copy.toggleFlow}</span>
                 <input
                   type="checkbox"
                   checked={showFlow}
@@ -732,7 +669,7 @@ export function FoldingSimulator() {
                 />
               </label>
               <label className="flex items-center justify-between text-xs text-slate-700 cursor-pointer">
-                <span>Mostrar ejes M8 y cotas exteriores</span>
+                <span>{copy.toggleAxes}</span>
                 <input
                   type="checkbox"
                   checked={showAxes}

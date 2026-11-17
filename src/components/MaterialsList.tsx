@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Download, RotateCcw } from 'lucide-react';
-import { BASE_BOM_ITEMS, BomItem, OLIVE_PRESETS, OlivePreset } from '../data/manualData';
+import { BomItem, OlivePreset } from '../data/manualData';
+import { LanguageCode } from '../i18n/types';
+import { UI_COPY } from '../i18n/uiCopy';
+import { getLocalizedDataset } from '../i18n/dataTranslations';
 
 type CategoryFilter = 'Todos' | BomItem['category'];
 
@@ -15,11 +18,16 @@ const CATEGORIES: CategoryFilter[] = [
 const STORAGE_KEY = 'criba-olivar-bom-checked-v1';
 
 interface MaterialsListProps {
+  lang: LanguageCode;
   selectedPresetId: OlivePreset['id'];
   onSelectPresetId: (id: OlivePreset['id']) => void;
 }
 
-export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsListProps) {
+export function MaterialsList({
+  lang,
+  selectedPresetId,
+  onSelectPresetId,
+}: MaterialsListProps) {
   const [filter, setFilter] = useState<CategoryFilter>('Todos');
   const [checkedIds, setCheckedIds] = useState<Record<string, boolean>>(() => {
     try {
@@ -38,24 +46,38 @@ export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsL
     }
   }, [checkedIds]);
 
+  const copy = UI_COPY[lang].materials;
+  const dataset = useMemo(() => getLocalizedDataset(lang), [lang]);
+  const decimalSep = lang === 'en' ? '.' : ',';
+
   const activePreset = useMemo(
-    () => OLIVE_PRESETS.find((p) => p.id === selectedPresetId) ?? OLIVE_PRESETS[1],
-    [selectedPresetId]
+    () => dataset.olivePresets.find((p) => p.id === selectedPresetId) ?? dataset.olivePresets[1],
+    [dataset.olivePresets, selectedPresetId]
   );
 
   const dynamicRodItem: BomItem = useMemo(
     () => ({
       id: 'bom-rods-dynamic',
       category: 'Metálica y Malla',
-      name: `Varilla calibrada lisa Ø ${activePreset.wireDiameterMm.toFixed(1).replace('.', ',')} mm (galvanizada o inox)`,
-      spec: `Paso ${activePreset.pitchMm.toFixed(1).replace('.', ',')} mm entre centros · Luz libre ${activePreset.clearGapMm.toFixed(1).replace('.', ',')} mm (${activePreset.name})`,
-      qtyLabel: `${activePreset.rodCountPerSection * 2} varillas (${activePreset.totalWireMeters} m)`,
-      note: `${activePreset.rodCountPerSection} varillas de 85 cm (tramo inf.) + ${activePreset.rodCountPerSection} de 79 cm (tramo sup.)`,
+      name: copy.dynamicRodName(activePreset.wireDiameterMm.toFixed(1).replace('.', decimalSep)),
+      spec: copy.dynamicRodSpec(
+        activePreset.pitchMm.toFixed(1).replace('.', decimalSep),
+        activePreset.clearGapMm.toFixed(1).replace('.', decimalSep),
+        activePreset.name
+      ),
+      qtyLabel: copy.dynamicRodQty(
+        activePreset.rodCountPerSection * 2,
+        activePreset.totalWireMeters
+      ),
+      note: copy.dynamicRodNote(activePreset.rodCountPerSection),
     }),
-    [activePreset]
+    [activePreset, copy, decimalSep]
   );
 
-  const allItems = useMemo(() => [dynamicRodItem, ...BASE_BOM_ITEMS], [dynamicRodItem]);
+  const allItems = useMemo(
+    () => [dynamicRodItem, ...dataset.bomItems],
+    [dynamicRodItem, dataset.bomItems]
+  );
 
   const visibleItems = useMemo(
     () => (filter === 'Todos' ? allItems : allItems.filter((item) => item.category === filter)),
@@ -76,14 +98,14 @@ export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsL
   };
 
   const handleExportCsv = () => {
-    const header = ['Categoría', 'Material', 'Especificación', 'Cantidad', 'Observaciones', 'Estado'];
+    const header = copy.csvHeaders;
     const rows = allItems.map((item) => [
-      item.category,
+      dataset.categoryNames[item.category],
       item.name,
       item.spec,
       item.qtyLabel,
       item.note,
-      checkedIds[item.id] ? 'Preparado' : 'Pendiente',
+      checkedIds[item.id] ? copy.csvReady : copy.csvPending,
     ]);
 
     const escapeCell = (cell: string) => `"${cell.replace(/"/g, '""')}"`;
@@ -94,7 +116,7 @@ export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsL
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `lista-materiales-criba-${activePreset.id}.csv`;
+    link.download = `bom-${lang}-${activePreset.id}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -107,10 +129,10 @@ export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsL
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
           <div>
             <p className="text-xs font-mono uppercase tracking-wider text-blue-800 mb-2">
-              03 · Lista de materiales y ajuste de parrilla
+              {copy.kicker}
             </p>
             <h2 className="font-display text-2xl md:text-3xl font-semibold text-slate-900 text-balance">
-              Presupuesto de taller según variedad de aceituna
+              {copy.title}
             </h2>
           </div>
 
@@ -121,7 +143,7 @@ export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsL
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap"
             >
               <Download className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Exportar CSV</span>
+              <span>{copy.exportCsvBtn}</span>
             </button>
             <button
               type="button"
@@ -129,7 +151,7 @@ export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsL
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer whitespace-nowrap"
             >
               <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>Limpiar marcas</span>
+              <span>{copy.clearMarksBtn}</span>
             </button>
           </div>
         </div>
@@ -138,16 +160,12 @@ export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsL
         <div className="border border-slate-200 rounded-xl bg-slate-50 p-6 space-y-5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h3 className="text-base font-semibold text-slate-900">
-                Calibración de separación entre varillas
-              </h3>
-              <p className="text-xs text-slate-600 mt-1">
-                Selecciona el calibre predominante de tu cosecha para recalcular automáticamente el paso de ranurado y los metros de varilla necesarios.
-              </p>
+              <h3 className="text-base font-semibold text-slate-900">{copy.calibTitle}</h3>
+              <p className="text-xs text-slate-600 mt-1">{copy.calibSubtitle}</p>
             </div>
 
             <div className="inline-flex flex-wrap gap-1 p-1 bg-slate-200/80 rounded-lg shrink-0">
-              {OLIVE_PRESETS.map((preset) => (
+              {dataset.olivePresets.map((preset) => (
                 <button
                   key={preset.id}
                   type="button"
@@ -166,27 +184,27 @@ export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsL
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-200">
             <div>
-              <div className="text-xs text-slate-500">Calibre del fruto</div>
+              <div className="text-xs text-slate-500">{copy.caliberLabel}</div>
               <div className="font-mono text-base font-semibold text-slate-900 mt-0.5">
                 {activePreset.caliberMm}
               </div>
             </div>
             <div>
-              <div className="text-xs text-slate-500">Luz libre entre varillas</div>
+              <div className="text-xs text-slate-500">{copy.clearGapLabel}</div>
               <div className="font-mono text-base font-semibold text-blue-800 mt-0.5">
-                {activePreset.clearGapMm.toFixed(1).replace('.', ',')} mm
+                {activePreset.clearGapMm.toFixed(1).replace('.', decimalSep)} mm
               </div>
             </div>
             <div>
-              <div className="text-xs text-slate-500">Paso de ranurado (centro a centro)</div>
+              <div className="text-xs text-slate-500">{copy.pitchLabel}</div>
               <div className="font-mono text-base font-semibold text-slate-900 mt-0.5">
-                {activePreset.pitchMm.toFixed(1).replace('.', ',')} mm
+                {activePreset.pitchMm.toFixed(1).replace('.', decimalSep)} mm
               </div>
             </div>
             <div>
-              <div className="text-xs text-slate-500">Varillas totales (2 tramos)</div>
+              <div className="text-xs text-slate-500">{copy.totalRodsLabel}</div>
               <div className="font-mono text-base font-semibold text-slate-900 mt-0.5">
-                {activePreset.rodCountPerSection * 2} uds ({activePreset.totalWireMeters} m)
+                {activePreset.rodCountPerSection * 2} {copy.rodsUnit} ({activePreset.totalWireMeters} m)
               </div>
             </div>
           </div>
@@ -208,13 +226,17 @@ export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsL
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {cat}
+                {cat === 'Todos' ? copy.allCat : dataset.categoryNames[cat]}
               </button>
             ))}
           </div>
 
           <div className="text-xs font-mono text-slate-600">
-            Checklist de taller: <strong className="text-slate-900">{completedCount} de {allItems.length}</strong> elementos listos
+            {copy.checklistProgress}{' '}
+            <strong className="text-slate-900">
+              {completedCount} / {allItems.length}
+            </strong>{' '}
+            {copy.checklistItems}
           </div>
         </div>
 
@@ -223,11 +245,11 @@ export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsL
           <table className="w-full text-left border-collapse text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-xs font-medium text-slate-600">
-                <th className="py-3 px-4 w-12 text-center">Listo</th>
-                <th className="py-3 px-4">Material / Componente</th>
-                <th className="py-3 px-4">Categoría</th>
-                <th className="py-3 px-4">Cantidad requerida</th>
-                <th className="py-3 px-4">Notas de compra y montaje</th>
+                <th className="py-3 px-4 w-12 text-center">{copy.tableCols.ready}</th>
+                <th className="py-3 px-4">{copy.tableCols.item}</th>
+                <th className="py-3 px-4">{copy.tableCols.category}</th>
+                <th className="py-3 px-4">{copy.tableCols.qty}</th>
+                <th className="py-3 px-4">{copy.tableCols.notes}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -246,7 +268,7 @@ export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsL
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => toggleItem(item.id)}
-                        aria-label={`Marcar ${item.name} como preparado`}
+                        aria-label={item.name}
                         className="w-4 h-4 accent-blue-800 rounded cursor-pointer"
                       />
                     </td>
@@ -257,7 +279,7 @@ export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsL
                       <div className="text-xs text-slate-500 mt-0.5">{item.spec}</div>
                     </td>
                     <td className="py-3.5 px-4 text-xs text-slate-600 whitespace-nowrap">
-                      {item.category}
+                      {dataset.categoryNames[item.category]}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-xs font-semibold text-blue-900 whitespace-nowrap">
                       {item.qtyLabel}
