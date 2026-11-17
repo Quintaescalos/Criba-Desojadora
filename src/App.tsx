@@ -5,18 +5,22 @@ import { FoldingSimulator } from './components/FoldingSimulator';
 import { BlueprintsViewer } from './components/BlueprintsViewer';
 import { MaterialsList } from './components/MaterialsList';
 import { AssemblyGuide } from './components/AssemblyGuide';
-import { REFERENCE_PHOTOS } from './data/manualData';
+import { PrintExportModal } from './components/PrintExportModal';
+import { OlivePreset, REFERENCE_PHOTOS } from './data/manualData';
 
 export default function App() {
   const [selectedPhotoId, setSelectedPhotoId] = useState<string>(REFERENCE_PHOTOS[0].id);
   const [imgErrorIds, setImgErrorIds] = useState<Record<string, boolean>>({});
+  const [selectedPresetId, setSelectedPresetId] = useState<OlivePreset['id']>('picual');
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+  const [isPrintPreparing, setIsPrintPreparing] = useState<boolean>(false);
 
   const activePhoto =
     REFERENCE_PHOTOS.find((p) => p.id === selectedPhotoId) ?? REFERENCE_PHOTOS[0];
 
   return (
     <div id="inicio" className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
-      <TopBar />
+      <TopBar onOpenExportModal={() => setIsExportModalOpen(true)} />
 
       <main className="flex-1">
         {/* Hero Section */}
@@ -154,9 +158,12 @@ export default function App() {
         </section>
 
         <FoldingSimulator />
-        <BlueprintsViewer />
-        <MaterialsList />
-        <AssemblyGuide />
+        <BlueprintsViewer forceExpand={isPrintPreparing} />
+        <MaterialsList
+          selectedPresetId={selectedPresetId}
+          onSelectPresetId={setSelectedPresetId}
+        />
+        <AssemblyGuide forceExpand={isPrintPreparing} />
       </main>
 
       <footer className="bg-white border-t border-slate-200 py-8">
@@ -177,6 +184,13 @@ export default function App() {
           </a>
         </div>
       </footer>
+
+      <PrintExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        selectedPresetId={selectedPresetId}
+        onPreparePrint={setIsPrintPreparing}
+      />
     </div>
   );
 }

@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ASSEMBLY_PHASES } from '../data/manualData';
 
-export function AssemblyGuide() {
+export function AssemblyGuide({ forceExpand = false }: { forceExpand?: boolean }) {
   const [selectedStep, setSelectedStep] = useState<number>(1);
   const [showAllSteps, setShowAllSteps] = useState<boolean>(false);
 
+  const isExpanded = showAllSteps || forceExpand;
   const activePhase = ASSEMBLY_PHASES.find((p) => p.step === selectedStep) ?? ASSEMBLY_PHASES[0];
 
   return (
@@ -26,11 +27,11 @@ export function AssemblyGuide() {
             onClick={() => setShowAllSteps((v) => !v)}
             className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer whitespace-nowrap self-start md:self-auto no-print"
           >
-            {showAllSteps ? 'Ver fase por fase' : 'Expandir las 7 fases'}
+            {isExpanded ? 'Ver fase por fase' : 'Expandir las 7 fases'}
           </button>
         </div>
 
-        {!showAllSteps ? (
+        {!isExpanded ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* Phase Selector List */}
             <div className="lg:col-span-4 border border-slate-200 rounded-xl bg-white divide-y divide-slate-100 overflow-hidden">

@@ -423,10 +423,12 @@ function PieceShapeSvg({ code, compact = false }: { code: string; compact?: bool
   );
 }
 
-export function PieceDetails() {
+export function PieceDetails({ forceExpand = false }: { forceExpand?: boolean }) {
   const [groupFilter, setGroupFilter] = useState<GroupFilter>('Todas');
   const [selectedCode, setSelectedCode] = useState<string>('M-01');
   const [showAllGrid, setShowAllGrid] = useState<boolean>(false);
+
+  const isGridExpanded = showAllGrid || forceExpand;
 
   const filteredPieces = useMemo(
     () =>
@@ -481,12 +483,12 @@ export function PieceDetails() {
             onClick={() => setShowAllGrid((v) => !v)}
             className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer whitespace-nowrap"
           >
-            {showAllGrid ? 'Vista inspector individual' : 'Ver todas las fichas (11)'}
+            {isGridExpanded ? 'Vista inspector individual' : 'Ver todas las fichas (11)'}
           </button>
         </div>
       </div>
 
-      {!showAllGrid ? (
+      {!isGridExpanded ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left selector list */}
           <div className="lg:col-span-4 border border-slate-200 rounded-xl bg-white divide-y divide-slate-100 overflow-hidden">

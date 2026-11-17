@@ -14,8 +14,12 @@ const CATEGORIES: CategoryFilter[] = [
 
 const STORAGE_KEY = 'criba-olivar-bom-checked-v1';
 
-export function MaterialsList() {
-  const [selectedPresetId, setSelectedPresetId] = useState<OlivePreset['id']>('picual');
+interface MaterialsListProps {
+  selectedPresetId: OlivePreset['id'];
+  onSelectPresetId: (id: OlivePreset['id']) => void;
+}
+
+export function MaterialsList({ selectedPresetId, onSelectPresetId }: MaterialsListProps) {
   const [filter, setFilter] = useState<CategoryFilter>('Todos');
   const [checkedIds, setCheckedIds] = useState<Record<string, boolean>>(() => {
     try {
@@ -147,7 +151,7 @@ export function MaterialsList() {
                 <button
                   key={preset.id}
                   type="button"
-                  onClick={() => setSelectedPresetId(preset.id)}
+                  onClick={() => onSelectPresetId(preset.id)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
                     selectedPresetId === preset.id
                       ? 'bg-white text-slate-900 shadow-sm'

@@ -11,7 +11,7 @@ const TABS: { id: BlueprintTab; label: string }[] = [
   { id: 'hopper', label: 'Tolva Pre-Cribado' },
 ];
 
-export function BlueprintsViewer() {
+export function BlueprintsViewer({ forceExpand = false }: { forceExpand?: boolean }) {
   const [activeTab, setActiveTab] = useState<BlueprintTab>('elevation');
 
   return (
@@ -260,7 +260,7 @@ export function BlueprintsViewer() {
         </div>
 
         {/* Individual Piece Shape & Dimension Sheets */}
-        <PieceDetails />
+        <PieceDetails forceExpand={forceExpand} />
 
         {/* Complete Wood Cutting Table */}
         <div className="space-y-4">
